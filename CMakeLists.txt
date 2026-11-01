@@ -17,6 +17,7 @@ juce_add_plugin(Paul50Bag
     NEEDS_MIDI_OUTPUT FALSE
     IS_MIDI_EFFECT FALSE
     NEEDS_WEB_BROWSER TRUE
+    NEEDS_WEBVIEW2 TRUE
     COPY_PLUGIN_AFTER_BUILD FALSE
     VST3_CATEGORIES Instrument Synth Generator
     AU_MAIN_TYPE kAudioUnitType_MusicDevice)

@@ -75,7 +75,7 @@ struct Tables { float WT[8][TS + 1];
     add (1, H ([] (int n, double& a, double&) { if (!(n % 2)) return false; a = (n % 4 == 1 ? 1.0 : -1.0) / (n * n); return true; }));
     add (2, H ([] (int n, double& a, double&) { a = 1.0 / n * std::exp (-n * .04); return true; }));
     add (3, H ([] (int n, double& a, double&) { if (!(n % 2)) return false; a = 1.0 / n; return true; }));
-    add (4, H ([] (int n, double& a, double&) { a = std::sin (n * M_PI * .18) / n; return a != 0; }));
+    add (4, H ([] (int n, double& a, double&) { a = std::sin (n * 3.14159265358979323846 * .18) / n; return a != 0; }));
     add (5, H ([] (int n, double& a, double&) { double f = n * 120.0; a = (std::exp (-std::pow ((f - 650) / 180, 2)) + .7 * std::exp (-std::pow ((f - 1100) / 220, 2)) + .25 * std::exp (-std::pow ((f - 2500) / 400, 2)) + .02) / std::sqrt ((double) n); return true; }));
     add (6, {{1,1,0},{3,.55,0},{5,.4,0},{7,.3,0},{9,.25,1},{11,.2,2},{13,.12,1}});
     add (7, H ([] (int n, double& a, double& ph) { a = (n % 3 == 0 ? .9 : .3) / std::sqrt ((double) n); ph = n * 1.3; return true; })); } };
@@ -83,7 +83,7 @@ inline const Tables& tables() { static Tables t; return t; }
 
 // ---------- building blocks ----------
 struct SVF { double a1 = 0, a2 = 0, a3 = 0, k = 1, ic1 = 0, ic2 = 0, bp = 0, lp = 0, hp = 0;
-  void set (double fc, double q, double sr) { fc = std::min (std::max (fc, 20.0), sr * .45); double g = std::tan (M_PI * fc / sr); k = 1 / q; a1 = 1 / (1 + g * (g + k)); a2 = g * a1; a3 = g * a2; }
+  void set (double fc, double q, double sr) { fc = std::min (std::max (fc, 20.0), sr * .45); double g = std::tan (3.14159265358979323846 * fc / sr); k = 1 / q; a1 = 1 / (1 + g * (g + k)); a2 = g * a1; a3 = g * a2; }
   double run (double x) { double v3 = x - ic2, v1 = a1 * ic1 + a2 * v3, v2 = ic2 + a2 * ic1 + a3 * v3; ic1 = 2 * v1 - ic1; ic2 = 2 * v2 - ic2; lp = v2; bp = v1; hp = x - k * v1 - v2; return v2; }
   void reset() { ic1 = ic2 = 0; } };
 struct Ladder { double y[4] = {0,0,0,0};
