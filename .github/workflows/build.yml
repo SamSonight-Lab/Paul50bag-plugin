@@ -1,0 +1,55 @@
+name: build
+on: [push, workflow_dispatch]
+jobs:
+  mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: JUCE
+        run: git clone --depth 1 --branch 8.0.10 https://github.com/juce-framework/JUCE.git JUCE
+      - name: Configure
+        run: cmake -B build -G Xcode -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+      - name: Build
+        run: cmake --build build --config Release -j 4
+      - name: Sign (ad-hoc) and package
+        run: |
+          A="build/Paul50Bag_artefacts/Release"
+          codesign --force --deep -s - "$A/AU/The Paul 50 Bag.component"
+          codesign --force --deep -s - "$A/VST3/The Paul 50 Bag.vst3"
+          codesign --force --deep -s - "$A/Standalone/The Paul 50 Bag.app"
+          mkdir -p out && cp -R "$A/AU/The Paul 50 Bag.component" "$A/VST3/The Paul 50 Bag.vst3" "$A/Standalone/The Paul 50 Bag.app" out/
+          cp INSTALL.txt out/
+          cd out && zip -qry "../Paul50Bag-mac.zip" .
+      - name: Validate AU
+        continue-on-error: true
+        run: |
+          mkdir -p ~/Library/Audio/Plug-Ins/Components && cp -R "build/Paul50Bag_artefacts/Release/AU/The Paul 50 Bag.component" ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar || true
+          auval -v aumu P50b Smsn
+      - uses: actions/upload-artifact@v4
+        with: { name: Paul50Bag-mac, path: Paul50Bag-mac.zip }
+  windows:
+    runs-on: windows-2022
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: JUCE
+        run: git clone --depth 1 --branch 8.0.10 https://github.com/juce-framework/JUCE.git JUCE
+      - name: WebView2 SDK
+        shell: pwsh
+        run: |
+          Register-PackageSource -provider NuGet -name nugetRepository -location https://www.nuget.org/api/v2 -Force
+          Install-Package Microsoft.Web.WebView2 -Scope CurrentUser -RequiredVersion 1.0.1901.177 -Source nugetRepository -Force
+      - name: Configure
+        run: cmake -B build -A x64
+      - name: Build
+        run: cmake --build build --config Release --target Paul50Bag_VST3 Paul50Bag_Standalone
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory out | Out-Null
+          Copy-Item -Recurse "build/Paul50Bag_artefacts/Release/VST3/The Paul 50 Bag.vst3" out/
+          Copy-Item "build/Paul50Bag_artefacts/Release/Standalone/The Paul 50 Bag.exe" out/
+          Compress-Archive -Path out/* -DestinationPath Paul50Bag-windows.zip
+      - uses: actions/upload-artifact@v4
+        with: { name: Paul50Bag-windows, path: Paul50Bag-windows.zip }

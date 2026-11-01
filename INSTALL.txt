@@ -1,0 +1,13 @@
+The Paul 50 Bag — plugin (test build)
+
+Mac
+1. Unzip.
+2. Copy "The Paul 50 Bag.component" to  ~/Library/Audio/Plug-Ins/Components/
+   Copy "The Paul 50 Bag.vst3"      to  ~/Library/Audio/Plug-Ins/VST3/
+3. These test builds are not notarised yet. Once, in Terminal:
+     xattr -cr ~/Library/Audio/Plug-Ins/Components/"The Paul 50 Bag.component" ~/Library/Audio/Plug-Ins/VST3/"The Paul 50 Bag.vst3"
+4. Restart your DAW and look for "SamSonight · The Paul 50 Bag" under instruments.
+"The Paul 50 Bag.app" is a standalone version (no DAW needed).
+
+In a DAW the band follows the host tempo and plays while the transport runs.
+A MIDI note sets the key of the whole band.

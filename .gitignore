@@ -1,0 +1,5 @@
+build/
+buildt/
+JUCE
+test/render
+test/t2
