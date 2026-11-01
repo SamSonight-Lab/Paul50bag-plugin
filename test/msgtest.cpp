@@ -8,6 +8,9 @@ int main (int argc, char** argv) {
   juce::AudioBuffer<float> buf (2, 512); juce::MidiBuffer midi; double s2 = 0, pk = 0; int T = 0;
   for (int i = 0; i < 48000 * 12 / 512; ++i) { p.processBlock (buf, midi); for (int j = 0; j < 512; ++j) { float v = buf.getSample (0, j); s2 += v * v; pk = std::max (pk, (double) std::abs (v)); ++T; } }
   printf ("rms %.3f pk %.2f\n", std::sqrt (s2 / T), pk);
+  { bool ok = p.enableAllBuses(); p.prepareToPlay (48000, 512); juce::AudioBuffer<float> b12 (p.getTotalNumOutputChannels(), 512); double e[6] = {};
+    for (int i = 0; i < 200; ++i) { p.processBlock (b12, midi); for (int c = 0; c < b12.getNumChannels(); c += 2) for (int j = 0; j < 512; ++j) e[c / 2] += b12.getSample (c, j) * b12.getSample (c, j); }
+    printf ("buses %d ch %d  main %.2f bass %.2f lead %.2f drums %.2f pad %.2f fx %.2f\n", ok, b12.getNumChannels(), e[0], e[1], e[2], e[3], e[4], e[5]); }
   auto snap = p.engineSnapshot(); printf ("%s\n", juce::JSON::toString (snap, true).toRawUTF8());
   // state round trip
   juce::MemoryBlock mb; p.uiState = "{\"K\":[[1,0,0,0,0,0,0,0,0,1]],\"M\":{\"tempo\":0.5}}"; p.getStateInformation (mb); Paul50BagProcessor q; q.setStateInformation (mb.getData(), (int) mb.getSize()); printf ("state ok %d\n", q.uiState == p.uiState);

@@ -194,6 +194,8 @@ struct Band {
   // automation lanes
   struct Lane { bool on = false; std::vector<float> a; } A[5][10]; bool held[5][10] = {}; int AL = 32; double apos = 0;
   Rack RA, RB; double rmp = 0;
+  // optional separate outputs (stems): 0 bass, 1 lead, 2 drums, 3 pad, 4 fx returns; set pointers before process(), null = off
+  float* stem[5][2] = {};
   // limiter
   float lb[2][64] = {}; int li = 0; double hv = 0; int hcn = 0; double lg = 1;
 
@@ -407,12 +409,15 @@ struct Band {
       for (auto& Ap : ap) { double v = Ap.b[Ap.i]; double w = rin + v * Ap.g; Ap.b[Ap.i] = (float) w; rin = v - w * Ap.g; Ap.i = (Ap.i + 1) % (int) Ap.b.size(); }
       double rv = 0; for (int j = 0; j < 6; ++j) { fdl[j] += (fdn[j][fdi[j]] - fdl[j]) * .4; rv += fdl[j]; }
       for (int j = 0; j < 6; ++j) { fdn[j][fdi[j]] = (float) (rin * .4 + .86 * (fdl[j] - rv / 3)); fdi[j] = (fdi[j] + 1) % (int) fdn[j].size(); }
-      oL += dlp[0] * (.4 + KF[7] * .5) + (fdl[0] + fdl[2] + fdl[4]) * .35; oR += dlp[1] * (.4 + KF[7] * .5) + (fdl[1] + fdl[3] + fdl[5]) * .35;
+      double tfxL = dlp[0] * (.4 + KF[7] * .5) + (fdl[0] + fdl[2] + fdl[4]) * .35, tfxR = dlp[1] * (.4 + KF[7] * .5) + (fdl[1] + fdl[3] + fdl[5]) * .35;
+      oL += tfxL; oR += tfxR;
       double lvl = std::max (std::fabs (oL), std::fabs (oR)); cmp += (lvl - cmp) * (lvl > cmp ? .003 : .00008);
       double thr = .32, gr = cmp > thr ? std::pow (thr / cmp, M.glue * .65) : 1, gm = gr * M.vol * (1.12 + M.glue * .4);
       { double a = oL * gm, b = oR * gm; if (dtM > .01) { double drv = 1 + dtM * 2.5, sk = 1 / std::sqrt (drv), w = std::min (1.0, dtM * 1.6); a += (std::tanh (a * drv) * sk - a) * w; b += (std::tanh (b * drv) * sk - b) * w; } oL = a * .95; oR = b * .95; }
       double yl = oL - dc[0] + .995 * dc[1]; dc[0] = oL; dc[1] = yl; double yr = oR - dc[2] + .995 * dc[3]; dc[2] = oR; dc[3] = yr;
       if (!(yl == yl && yr == yr)) { yl = yr = 0; for (auto& y : B.L.y) y = 0; Ld.F.reset(); P.F.reset(); P.F2.reset(); sw.reset(); D.rF.reset(); D.sF.reset(); std::fill (dl[0].begin(), dl[0].end(), 0.f); std::fill (dl[1].begin(), dl[1].end(), 0.f); for (auto& F : fdn) std::fill (F.begin(), F.end(), 0.f); for (auto& x : fdl) x = 0; }
+      if (stem[0][0]) { double sg = gm * .95; const double v[5][2] = { { cb, cb }, { cl, cr }, { cd, cd }, { cpl, cpr }, { raL * 1.4 + rbL * 1.3 + tfxL, raR * 1.4 + rbR * 1.3 + tfxR } };
+        for (int k = 0; k < 5; ++k) if (stem[k][0]) { stem[k][0][s] = (float) SLIM (v[k][0] * sg); stem[k][1][s] = (float) SLIM (v[k][1] * sg); } }
       // look-ahead limiter
       float ql = lb[0][li], qr = lb[1][li]; lb[0][li] = (float) yl; lb[1][li] = (float) yr; li = (li + 1) & 63;
       double pk = std::max (std::fabs (yl), std::fabs (yr)); if (pk >= hv || --hcn <= 0) { hv = pk; hcn = 72; } pk = hv; double tg = pk > .88 ? .88 / pk : 1; lg += (tg - lg) * (tg < lg ? .06 : .00012);

@@ -7,7 +7,7 @@ public:
   Paul50BagProcessor();
   void prepareToPlay (double sampleRate, int) override;
   void releaseResources() override {}
-  bool isBusesLayoutSupported (const BusesLayout& l) const override { return l.getMainOutputChannelSet() == juce::AudioChannelSet::stereo(); }
+  bool isBusesLayoutSupported (const BusesLayout& l) const override;
   void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
   juce::AudioProcessorEditor* createEditor() override;
   bool hasEditor() const override { return true; }
@@ -36,5 +36,6 @@ private:
   double sr = 48000;
   bool prepared = false;
   int flashAcc[5] = {};
+  std::vector<float> scratch[5][2];
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Paul50BagProcessor)
 };

@@ -4,10 +4,19 @@
 #endif
 
 Paul50BagProcessor::Paul50BagProcessor()
-  : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true)) {
+  : AudioProcessor (BusesProperties().withOutput ("Main", juce::AudioChannelSet::stereo(), true)
+      .withOutput ("Bass", juce::AudioChannelSet::stereo(), false).withOutput ("Lead", juce::AudioChannelSet::stereo(), false)
+      .withOutput ("Drums", juce::AudioChannelSet::stereo(), false).withOutput ("Pad", juce::AudioChannelSet::stereo(), false)
+      .withOutput ("FX", juce::AudioChannelSet::stereo(), false)) {
   band.prepare (48000); }
 
-void Paul50BagProcessor::prepareToPlay (double sampleRate, int) {
+bool Paul50BagProcessor::isBusesLayoutSupported (const BusesLayout& l) const {
+  if (l.getMainOutputChannelSet() != juce::AudioChannelSet::stereo()) return false;
+  for (int i = 1; i < l.outputBuses.size(); ++i) { auto c = l.outputBuses[i]; if (! c.isDisabled() && c != juce::AudioChannelSet::stereo()) return false; }
+  return l.inputBuses.isEmpty(); }
+
+void Paul50BagProcessor::prepareToPlay (double sampleRate, int block) {
+  for (auto& a : scratch) for (auto& v : a) v.assign ((size_t) std::max (block, 4096), 0.f);
   const juce::SpinLock::ScopedLockType sl (lock);
   if (! prepared || std::abs (sampleRate - sr) > 1) {
     // keep the knobs/state, rebuild the buffers for the new rate
@@ -35,7 +44,15 @@ void Paul50BagProcessor::processBlock (juce::AudioBuffer<float>& buf, juce::Midi
   for (const auto m : midi) { auto msg = m.getMessage(); if (msg.isNoteOn()) band.M.key = (msg.getNoteNumber() % 12) / 11.0; }
   if (hostBpm > 0 && followHost && ! juce::JUCEApplicationBase::isStandaloneApp()) band.M.tempo = TOF (hostBpm);
   if (! play) return;
-  float* L = buf.getWritePointer (0); float* R = buf.getNumChannels() > 1 ? buf.getWritePointer (1) : L;
+  auto main = getBusBuffer (buf, false, 0);
+  float* L = main.getWritePointer (0); float* R = main.getNumChannels() > 1 ? main.getWritePointer (1) : L;
+  // stems: write straight into enabled aux buses (or into scratch so the engine always has somewhere to write)
+  bool anyStem = false;
+  for (int k = 0; k < 5; ++k) { band.stem[k][0] = band.stem[k][1] = nullptr;
+    if (k + 1 < getBusCount (false) && getBus (false, k + 1)->isEnabled()) { auto b = getBusBuffer (buf, false, k + 1);
+      if (b.getNumChannels() >= 2) { band.stem[k][0] = b.getWritePointer (0); band.stem[k][1] = b.getWritePointer (1); anyStem = true; } } }
+  if (anyStem) for (int k = 0; k < 5; ++k) if (! band.stem[k][0]) { if ((int) scratch[k][0].size() < n) { band.stem[k][0] = nullptr; continue; } band.stem[k][0] = scratch[k][0].data(); band.stem[k][1] = scratch[k][1].data(); }
+  if (! band.stem[0][0]) for (auto& row : band.stem) row[0] = row[1] = nullptr;
   band.process (L, R, n);
   for (int i = 0; i < 5; ++i) if (band.flash[i]) { flashAcc[i] = 1; band.flash[i] = 0; } }
 

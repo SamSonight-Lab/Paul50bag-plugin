@@ -11,3 +11,9 @@ Mac
 
 In a DAW the band follows the host tempo and plays while the transport runs.
 A MIDI note sets the key of the whole band.
+
+Separate outputs (stems)
+Besides the main mix the plugin has 5 extra stereo outputs: Bass, Lead, Drums, Pad, FX (reverb/delay returns).
+- Logic: load it as "The Paul 50 Bag" Multi Output (Stereo), then press + on the instrument channel strip in the mixer to add the aux channels.
+- Ableton: make new audio tracks, set "Audio From" to the Paul 50 Bag track and pick Bass / Lead / Drums / Pad / FX.
+The main output always carries the full mix; mute or lower it when you work with the stems.
