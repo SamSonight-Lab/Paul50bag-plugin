@@ -1,5 +1,7 @@
 name: build
 on: [push, workflow_dispatch]
+permissions:
+  contents: write
 jobs:
   mac:
     runs-on: macos-14
@@ -28,6 +30,13 @@ jobs:
           auval -v aumu P50b Smsn
       - uses: actions/upload-artifact@v4
         with: { name: Paul50Bag-mac, path: Paul50Bag-mac.zip }
+      - name: Publish test build
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: test-build
+          name: Test build (latest)
+          prerelease: true
+          files: Paul50Bag-mac.zip
   windows:
     runs-on: windows-2022
     continue-on-error: true
@@ -53,3 +62,10 @@ jobs:
           Compress-Archive -Path out/* -DestinationPath Paul50Bag-windows.zip
       - uses: actions/upload-artifact@v4
         with: { name: Paul50Bag-windows, path: Paul50Bag-windows.zip }
+      - name: Publish test build
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: test-build
+          name: Test build (latest)
+          prerelease: true
+          files: Paul50Bag-windows.zip
