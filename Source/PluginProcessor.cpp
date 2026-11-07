@@ -23,7 +23,7 @@ void Paul50BagProcessor::prepareToPlay (double sampleRate, int block) {
     p50::Band fresh; fresh.prepare (sampleRate);
     std::memcpy (fresh.K, band.K, sizeof band.K); std::memcpy (fresh.KS, band.K, sizeof band.K);
     std::memcpy (fresh.E, band.E, sizeof band.E); std::memcpy (fresh.S, band.S, sizeof band.S); std::memcpy (fresh.C, band.C, sizeof band.C);
-    fresh.CG = band.CG; fresh.DR = band.DR; fresh.M = band.M; fresh.X = band.X; fresh.freeze = band.freeze; fresh.AL = band.AL;
+    fresh.CG = band.CG; fresh.DR = band.DR; fresh.DRS = band.DRS; fresh.DRM = band.DRM; fresh.M = band.M; fresh.X = band.X; fresh.freeze = band.freeze; fresh.AL = band.AL;
     for (int r = 0; r < 5; ++r) for (int j = 0; j < 10; ++j) fresh.A[r][j] = band.A[r][j];
     for (int i = 0; i < 7; ++i) fresh.setSample (i, band.SM[i]);
     band = std::move (fresh); }
@@ -84,6 +84,8 @@ void Paul50BagProcessor::handleMessage (const juce::var& d) {
   if (auto* C = d["C"].getArray()) for (int i = 0; i < 8 && i < C->size(); ++i) b.C[i] = (double) (*C)[i];
   if (d.hasProperty ("CG")) b.CG = (double) d["CG"];
   if (d.hasProperty ("DR")) b.DR = (double) d["DR"];
+  if (d.hasProperty ("DRS")) b.DRS = (double) d["DRS"];
+  if (d.hasProperty ("DRM")) b.DRM = (int) num (d["DRM"]);
   if (d.hasProperty ("song")) b.startSong();
   if (auto* R = d["setreg"].getArray()) for (int i = 0; i < 5 && i < R->size(); ++i) b.reg[i] = (int) (*R)[i];
   if (smpSlot >= 0) b.setSample (smpSlot, smp);
@@ -100,7 +102,7 @@ void Paul50BagProcessor::handleMessage (const juce::var& d) {
 void Paul50BagProcessor::applyFullState (const juce::String& json) {
   auto st = juce::JSON::parse (json); if (! st.isObject()) return;
   juce::DynamicObject::Ptr m = new juce::DynamicObject();
-  for (auto k : { "K", "E", "S", "M", "X", "C", "CG", "DR", "freeze" }) if (st.hasProperty (k)) m->setProperty (k, st[k]);
+  for (auto k : { "K", "E", "S", "M", "X", "C", "CG", "DR", "DRS", "DRM", "freeze" }) if (st.hasProperty (k)) m->setProperty (k, st[k]);
   m->setProperty ("aclear", 1); if (st.hasProperty ("A")) m->setProperty ("auto", st["A"]); if (st.hasProperty ("AL")) m->setProperty ("alen", (int) num (st["AL"], 2) * 16);
   handleMessage (juce::var (m.get())); }
 

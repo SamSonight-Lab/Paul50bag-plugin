@@ -186,7 +186,7 @@ struct Band {
   std::vector<float> dl[2]; int dw = 0; double dlp[2] = {0,0}, wow = 0;
   std::vector<float> fdn[6]; int fdi[6] = {}; double fdl[6] = {};
   struct AP { std::vector<float> b; int i = 0; double g; } ap[4];
-  double cmp = 0, dc[4] = {0,0,0,0}; double DR = 0, dT = 0; double dro[50] = {}, dfw[50], dfw2[50], dfp[50], dfp2[50];
+  double cmp = 0, dc[4] = {0,0,0,0}; double DR = 0, dT = 0, DRS = .7; int DRM = 0; long long dSeen = -1; double dro[50] = {}, dfw[50], dfw2[50], dfp[50], dfp2[50];
   SampleP SM[7]; // b l p dk ds dh dt
   double C[8] = {}, CR[8] = {}, CG = 0, cp = 0, cpT = 0, lf = 0, pp = 0; int flash[5] = {};
   // song
@@ -286,8 +286,11 @@ struct Band {
     double bpm = BPMF (M.tempo); stepLen = bpm > 0 ? sr * 60 / bpm / 4 : 1e30; double hs = std::min (1.0, bpm / 30);
     { double sl = stepLen > 1e29 ? 1 : stepLen; double pos = ((step % AL) + std::min (.999, st / sl)) / AL; apos = pos;
       for (int r = 0; r < 5; ++r) for (int j = 0; j < 10; ++j) { auto& L = A[r][j]; if (!L.on || held[r][j] || L.a.empty()) continue; int N = (int) L.a.size(); double x = pos * N; int i = ((int) std::floor (x)) % N; double f = x - std::floor (x); K[r][j] = L.a[i] + (L.a[(i + 1) % N] - L.a[i]) * f; } }
-    double dr = DR; if (dr > .001 || dro[1] != 0) { dT += n / sr * (.5 + dr * 1.5); for (int i = 0; i < 50; ++i) { int j = i % 10; dro[i] = (j == 0 || j == 9) ? 0 : dr * .42 * std::sin (dT * dfw[i] + dfp[i]) * (.55 + .45 * std::sin (dT * dfw2[i] + dfp2[i])); } }
-    for (int r = 0; r < 5; ++r) for (int j = 0; j < 10; ++j) { double t = std::min (1.0, std::max (0.0, K[r][j] + dro[r * 10 + j])); KS[r][j] += (t - KS[r][j]) * .02; }
+    double dr = DR; static const int DRDIV[6] = {2,4,8,16,32,64};
+    if (DRM && dr > .001) { int dv = DRDIV[std::min (5, ri (DRS * 6))]; if (step != dSeen && step % dv == 0) { dSeen = step; for (int i = 0; i < 50; ++i) { int j = i % 10; dro[i] = (j == 0 || j == 9) ? 0 : dr * .42 * (R() * 2 - 1); } } }
+    else if (dr > .001 || dro[1] != 0) { dT += n / sr * (.5 + dr * 1.5) * .04 * std::pow (100.0, DRS); for (int i = 0; i < 50; ++i) { int j = i % 10; dro[i] = (j == 0 || j == 9) ? 0 : dr * .42 * std::sin (dT * dfw[i] + dfp[i]) * (.55 + .45 * std::sin (dT * dfw2[i] + dfp2[i])); } }
+    if (dr <= .001 && DRM) for (auto& x : dro) x = 0;
+    { double ksm = DRM && dr > .001 ? .3 : .02; for (int r = 0; r < 5; ++r) for (int j = 0; j < 10; ++j) { double t = std::min (1.0, std::max (0.0, K[r][j] + dro[r * 10 + j])); KS[r][j] += (t - KS[r][j]) * ksm; } }
     const double *KB = KS[0], *KL = KS[1], *KD = KS[2], *KP = KS[3], *KF = KS[4];
     for (int i = 0; i < 8; ++i) CR[i] += (std::max (C[i], CG * .85) - CR[i]) * .05;
     double bdec = std::exp (-hs / (sr * (.07 + KB[7] * .6))), bk = KB[6] * 3.9, bdrv = 1 + KB[8] * 7;
