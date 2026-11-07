@@ -466,7 +466,7 @@ class Band extends AudioWorkletProcessor{
       if(R()<K[2]*1.1&&(m===0?(g&1):gt)){const N=this.mb[0].length,len=Math.max(64,Math.round(this.stepLen*(R()<.5?.5:1)));this.rep={st:(this.mw-len+N)%N,len,i:0,left:Math.round(L)}}
       this.cpT=(cv-.5)*2;this.rf=50*Math.pow(2,cv*6);this.swt=Math.max(150,20000*Math.pow(2,-K[5]*cv*7));this.dropT=R()<K[6]*.8?0:1}}
   hit(t,v,x){const D=this.D,de=this.E[2],real=de===6||de===7;
-    if(t===0){D.ke=1;D.ka=1;D.kpe=1;D.kpe2=1;D.kp=0;D.mp=0;D.kv=v}
+    if(t===0){D.kxv=D.klast||0;D.kxn=64;D.ke=1;D.ka=1;D.kpe=1;D.kpe2=1;D.kp=0;D.mp=0;D.kv=v}
     else if(t===1){D.se=1;D.st=1;D.spe=1;D.sv=v}
     else if(t===2){D.he=.6+.4*v;D.hc=1;D.ho=0;D.hv=v}
     else if(t===3){D.he=1;D.ho=1;D.hc=0;D.hv=v}
@@ -508,7 +508,7 @@ class Band extends AudioWorkletProcessor{
     {const ksm=drm&&dr>.001?.3:.02;for(let r=0;r<5;r++)for(let j=0;j<10;j++){const t=Math.min(1,Math.max(0,K[r][j]+this.dro[r*10+j]));KS[r][j]+=(t-KS[r][j])*ksm}}
     const KB=KS[0],KL=KS[1],KD=KS[2],KP=KS[3],KF=KS[4],B=this.B,Ld=this.L,D=this.D,P=this.P,CR=this.CR;
     for(let i=0;i<8;i++)CR[i]+=(Math.max(this.C[i],this.CG*.85)-CR[i])*.05;
-    const bdec=Math.exp(-hs/(sr*(.07+KB[7]*.6))),bk=KB[6]*3.9,bdrv=1+KB[8]*7;
+    const batt=1-Math.exp(-1/(sr*.002)),bdec=Math.exp(-hs/(sr*(.07+KB[7]*.6))),bk=KB[6]*3.9,bdrv=1+KB[8]*7;
     Ld.F.set(150*Math.pow(2,Math.min(7.6,KL[5]*7+Ld.env*1.6+CR[6]*D.se*4)),.7+KL[6]*KL[6]*9,sr);const lgl=1-Math.exp(-1/(sr*(.003+KL[7]*KL[7]*.4)));
     const de=E[2],kdec=Math.exp(-hs/(sr*(.06+KD[4]*.7))),sdec=Math.exp(-hs/(sr*(.05+KD[5]*.22))),hdec=Math.exp(-hs/(sr*(.012+KD[6]*.28))),tdec=Math.pow(.9994,hs),ldec=Math.pow(.9996,hs),kf0=32+KD[3]*60,swing=KD[7]*.33,kpdec=Math.exp(-hs/(sr*.022)),kpdec2=Math.exp(-hs/(sr*.07)),tpdec=Math.exp(-hs/(sr*.045)),k8dec=Math.exp(-hs/(sr*(.12+KD[4]*1.5))),hcdec=Math.exp(-hs/(sr*(.022+KD[6]*.09))),hodec=Math.exp(-hs/(sr*(.18+KD[6]*.55))),stdec=Math.exp(-hs/(sr*.055)),spdec=Math.exp(-hs/(sr*.009)),cldec=Math.exp(-hs/(sr*(.08+KD[5]*.16))),t8dec=Math.exp(-hs/(sr*(.14+KD[4]*.4))),dtM=M.dirt===undefined?.5:M.dirt,hpk=1-Math.exp(-TAU*6500/sr),DMb=this.X.dm||DM0,DUb=this.X.dmu||DU0,DG0=DUb[0]?0:DMb[0]*DMb[0]*1.23,DG1=DUb[1]?0:DMb[1]*DMb[1]*1.23,DG2=DUb[2]?0:DMb[2]*DMb[2]*1.23,DG3=DUb[3]?0:DMb[3]*DMb[3]*1.23;
     D.sF.set(de===3?400+KD[5]*2000:900+KD[5]*2600,de===3?8:1.2,sr);D.hF.set(de===1?9000:7000,.8,sr);if(de===6){D.sF.set(1700+KD[5]*1500,.7,sr);D.hF.set(7100,1.3,sr);D.cF.set(1150,1.6,sr)}else if(de===7){D.sF.set(2600+KD[5]*3500,.6,sr);D.hF.set(8800,1.1,sr);D.cF.set(1250,1.5,sr)}
@@ -520,10 +520,10 @@ class Band extends AudioWorkletProcessor{
       for(let r=0;r<5;r++){this.pa[r]+=(2.3+r*1.37)*Math.pow(2,KS[r][3]*3*(this.pb[r]<.5?1:-1))/sr;if(this.pa[r]>1)this.pa[r]-=1;this.pb[r]+=(.9+r*.61)/sr;if(this.pb[r]>1)this.pb[r]-=1}
       // 一 BASS: engine + sub, into a driven ladder
       this.cp+=(this.cpT-this.cp)*.0004;const pm=CR[5]>.002?Math.pow(2,CR[5]*this.cp*7/12):1;
-      B.f+=(B.tf-B.f)*.004;B.env*=bdec;
+      B.f+=(B.tf-B.f)*.004;B.env*=bdec;{const ta=Math.min(1,B.env*4+(E[0]===4||E[0]===3?.15:0));B.amp=(B.amp||0)+(ta-(B.amp||0))*(ta>(B.amp||0)?batt:1)}
       let bx=B.v.run(E[0],B.f*pm,KB[3],KB[4],B.env)*EGB[E[0]];B.ps+=B.f*.5/sr;if(B.ps>=1)B.ps-=1;bx+=Math.sin(TAU*B.ps)*.55;
       const bfc=38*Math.pow(2,KB[5]*7.5+B.env*KB[7]*4.5+B.acc*B.env*1.2+CR[2]*this.lf*12),bg=1-Math.exp(-TAU*Math.min(sr*.4,bfc)/sr);
-      let by=B.L.run(bx*.4*bdrv,bg,bk);by=Math.tanh(by*(1+KB[8]*1.5))*Math.min(1,B.env*4+(E[0]===4||E[0]===3?.15:0))*KB[9]*KB[9]*1.1;
+      let by=B.L.run(bx*.4*bdrv,bg,bk);by=Math.tanh(by*(1+KB[8]*1.5))*B.amp*KB[9]*KB[9]*1.1;
       // 二 LEAD: engine → filter → stereo chorus
       Ld.f+=(Ld.tf-Ld.f)*lgl;if(Ld.gate){Ld.gl--;Ld.env+=(1-Ld.env)*.004;if(Ld.gl<=0)Ld.gate=0}else Ld.env*=ldec;
       {const lu=Ld.v.run(E[1],Ld.f*pm*Math.max(.05,1+CR[1]*3*by),KL[3],KL[4],Ld.env)*1.2*EGL[E[1]]*(1+CR[6]*D.se*3),lc=lu*.62;Ld.F.run(lc+(Math.tanh(lu)-lc)*dtM)}let lx=Ld.F.lp*Ld.env*KL[9]*KL[9]*.8;this.lf+=(Math.min(1,Math.abs(lx)*4)-this.lf)*.003;
@@ -571,7 +571,7 @@ class Band extends AudioWorkletProcessor{
         const S=this.SM,rt=Math.pow(2,(KD[3]-.5)*1.6),rd=(sl,k,g)=>{const B0=S[sl];if(!B0)return 0;const p=D[k],dd=B0.d;if(p>=dd.length-1)return 0;const i=p|0,f=p-i;D[k]=p+rt;return(dd[i]+(dd[i+1]-dd[i])*f)*g};
         dk=rd('dk','pk',Math.min(1,D.ke*2.5));ds=rd('ds','ps',Math.min(1,D.se*2.5));dh=rd('dh','ph',Math.min(1,D.he*2));if(D.pt<1e8)dt=rd('dt','pt',Math.min(1,D.te*2.5))}
       if(de<6&&D.te>.002){D.tp+=(70*D.tf+KD[3]*80)*(1+.45*D.tpe)/sr;if(D.tp>1)D.tp-=1;dt=Math.sin(TAU*D.tp)*D.te*.5}
-      if(de!==6&&de!==7){dk*=D.kv;ds*=D.sv;dh*=D.hv*(de<6?1.8:1);dt*=D.tv*(de<6?1.6:1)}const dsum=dk*DG0+ds*DG1+dh*DG2+dt*DG3;let dx=dsum*.95;if(dtM>.01)dx+=(Math.tanh(dsum*1.4)-dx)*Math.min(1,dtM*1.5);if(KD[8]>.02){if(++D.crc>=1+Math.round(KD[8]*20)){D.crc=0;const lv=Math.pow(2,9-KD[8]*6);D.crh2=Math.round(dx*lv)/lv}dx=dx+((D.crh2||0)-dx)*Math.min(1,KD[8]*2)}
+      if(D.kxn>0){const w=D.kxn/64;dk=dk*(1-w)+D.kxv*w;D.kxv*=.97;D.kxn--}D.klast=dk;if(de!==6&&de!==7){dk*=D.kv;ds*=D.sv;dh*=D.hv*(de<6?1.8:1);dt*=D.tv*(de<6?1.6:1)}const dsum=dk*DG0+ds*DG1+dh*DG2+dt*DG3;let dx=dsum*.95;if(dtM>.01)dx+=(Math.tanh(dsum*1.4)-dx)*Math.min(1,dtM*1.5);if(KD[8]>.02){if(++D.crc>=1+Math.round(KD[8]*20)){D.crc=0;const lv=Math.pow(2,9-KD[8]*6);D.crh2=Math.round(dx*lv)/lv}dx=dx+((D.crh2||0)-dx)*Math.min(1,KD[8]*2)}
       dx*=KD[9]*KD[9]*1.1;if(CR[3]>.003)dx=dx*(1-CR[3])+Math.tanh(dx*this.pp*14)*CR[3]*1.2;
       // 四 PAD: five voices of the chosen engine, wide chorus, slow swell
       P.env+=((KP[9]>.01?1:0)-P.env)*pat;let pl=0,pr=0;

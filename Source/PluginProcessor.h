@@ -36,6 +36,7 @@ private:
   double sr = 48000;
   bool prepared = false;
   int flashAcc[5] = {};
+  float runGain = 1.f;
   std::vector<float> scratch[5][2];
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Paul50BagProcessor)
 };

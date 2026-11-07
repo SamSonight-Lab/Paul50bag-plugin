@@ -38,12 +38,13 @@ void Paul50BagProcessor::processBlock (juce::AudioBuffer<float>& buf, juce::Midi
   if (auto* ph = getPlayHead()) if (auto pos = ph->getPosition()) {
     if (auto b = pos->getBpm()) hostBpm = *b;
     if (! juce::JUCEApplicationBase::isStandaloneApp()) play = pos->getIsPlaying() || ! pos->getTimeInSeconds().hasValue(); }
-  const juce::SpinLock::ScopedTryLockType sl (lock);
-  if (! sl.isLocked()) return;
+  const juce::SpinLock::ScopedLockType sl (lock);   // never skip audio: messages only hold this lock for a moment
   // MIDI: a note sets the key of the whole band
   for (const auto m : midi) { auto msg = m.getMessage(); if (msg.isNoteOn()) band.M.key = (msg.getNoteNumber() % 12) / 11.0; }
   if (hostBpm > 0 && followHost && ! juce::JUCEApplicationBase::isStandaloneApp()) band.M.tempo = TOF (hostBpm);
-  if (! play) return;
+  // transport: fade out / in instead of cutting the sound
+  const float gTarget = play ? 1.f : 0.f;
+  if (gTarget == 0.f && runGain <= 0.f) return;
   auto main = getBusBuffer (buf, false, 0);
   float* L = main.getWritePointer (0); float* R = main.getNumChannels() > 1 ? main.getWritePointer (1) : L;
   // stems: write straight into enabled aux buses (or into scratch so the engine always has somewhere to write)
@@ -53,7 +54,14 @@ void Paul50BagProcessor::processBlock (juce::AudioBuffer<float>& buf, juce::Midi
       if (b.getNumChannels() >= 2) { band.stem[k][0] = b.getWritePointer (0); band.stem[k][1] = b.getWritePointer (1); anyStem = true; } } }
   if (anyStem) for (int k = 0; k < 5; ++k) if (! band.stem[k][0]) { if ((int) scratch[k][0].size() < n) { band.stem[k][0] = nullptr; continue; } band.stem[k][0] = scratch[k][0].data(); band.stem[k][1] = scratch[k][1].data(); }
   if (! band.stem[0][0]) for (auto& row : band.stem) row[0] = row[1] = nullptr;
-  band.process (L, R, n);
+  // run the engine in 128-sample slices, like the web version: knob smoothing and drift stay fine-grained at any host block size
+  for (int off = 0; off < n; off += 128) { int m = std::min (128, n - off);
+    float* sv[5][2]; for (int k = 0; k < 5; ++k) { sv[k][0] = band.stem[k][0]; sv[k][1] = band.stem[k][1]; if (sv[k][0]) { band.stem[k][0] += off; band.stem[k][1] += off; } }
+    band.process (L + off, R + off, m);
+    for (int k = 0; k < 5; ++k) { band.stem[k][0] = sv[k][0]; band.stem[k][1] = sv[k][1]; } }
+  if (runGain != gTarget || gTarget < 1.f) { const float step = 1.f / (float) (getSampleRate() * .03);
+    for (int i = 0; i < n; ++i) { runGain += runGain < gTarget ? std::min (step, gTarget - runGain) : -std::min (step, runGain - gTarget);
+      for (int c = 0; c < buf.getNumChannels(); ++c) buf.getWritePointer (c)[i] *= runGain; } }
   for (int i = 0; i < 5; ++i) if (band.flash[i]) { flashAcc[i] = 1; band.flash[i] = 0; } }
 
 // ---------- messages ----------

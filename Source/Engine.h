@@ -176,9 +176,9 @@ struct Band {
   Master M; Mix X; int freeze = 0;
   double ag[4] = {1,1,1,1}, agT[4] = {1,1,1,1};
   int reg[5]; double pa[5], pb[5]; double st = 0; long long step = 0; double stepLen = 1e30;
-  struct BassS { Voice v; double f = 55, tf = 55, ps = 0, env = 0; int acc = 0; Ladder L; } B;
+  struct BassS { Voice v; double f = 55, tf = 55, ps = 0, env = 0, amp = 0; int acc = 0; Ladder L; } B;
   struct LeadS { Voice v; double f = 220, tf = 220, env = 0; int gate = 0; double gl = 0; SVF F; float cb[2048] = {}; int cw = 0; double lfo = 0; } Ld;
-  struct DrumS { double hc=0,ho=0,st=0,spe=0,cl=0; int clb=0,clt=0; double t8=0,hz=0,kv=1,sv=1,hv=1,tv=1; SVF cF; double ka=0,kpe=0,kpe2=0,tpe=0,s8a=0,s8b=0,kp=0,ke=0,kf=0,se=0,he=0,te=0,tp=0; double tf=1;
+  struct DrumS { double hc=0,ho=0,st=0,spe=0,cl=0; int clb=0,clt=0; double t8=0,hz=0,kv=1,sv=1,hv=1,tv=1; SVF cF; double klast=0,kxv=0; int kxn=0; double ka=0,kpe=0,kpe2=0,tpe=0,s8a=0,s8b=0,kp=0,ke=0,kf=0,se=0,he=0,te=0,tp=0; double tf=1;
     SVF sF,hF,rF; int crc=0; double crh=0, crh2=0; double hp[6]={0,0,0,0,0,0}; double bt=0, mp=0; double pk=1e9, ps=1e9, ph=1e9, pt=1e9; } D;
   struct PadV { Voice o; double f = 110, tf = 110; };
   struct PadS { PadV v[5]; double env = 0; SVF F, F2; float cb[2][4096] = {}; int cw = 0; double lfo = 0; } P;
@@ -252,7 +252,7 @@ struct Band {
       cpT = (cv - .5) * 2; rf = 50 * std::pow (2.0, cv * 6); swt = std::max (150.0, 20000 * std::pow (2.0, -Kr[5] * cv * 7)); dropT = R() < Kr[6] * .8 ? 0 : 1; } }
 
   void hit (int t, double v, int x = 1) { auto& d = D; int de = E[2]; bool real = de == 6 || de == 7;
-    if (t == 0) { d.ke = 1; d.ka = 1; d.kpe = 1; d.kpe2 = 1; d.kp = 0; d.mp = 0; d.kv = v; }
+    if (t == 0) { d.kxv = d.klast; d.kxn = 64; d.ke = 1; d.ka = 1; d.kpe = 1; d.kpe2 = 1; d.kp = 0; d.mp = 0; d.kv = v; }
     else if (t == 1) { d.se = 1; d.st = 1; d.spe = 1; d.sv = v; }
     else if (t == 2) { d.he = .6 + .4 * v; d.hc = 1; d.ho = 0; d.hv = v; }
     else if (t == 3) { d.he = 1; d.ho = 1; d.hc = 0; d.hv = v; }
@@ -293,7 +293,7 @@ struct Band {
     { double ksm = DRM && dr > .001 ? .3 : .02; for (int r = 0; r < 5; ++r) for (int j = 0; j < 10; ++j) { double t = std::min (1.0, std::max (0.0, K[r][j] + dro[r * 10 + j])); KS[r][j] += (t - KS[r][j]) * ksm; } }
     const double *KB = KS[0], *KL = KS[1], *KD = KS[2], *KP = KS[3], *KF = KS[4];
     for (int i = 0; i < 8; ++i) CR[i] += (std::max (C[i], CG * .85) - CR[i]) * .05;
-    double bdec = std::exp (-hs / (sr * (.07 + KB[7] * .6))), bk = KB[6] * 3.9, bdrv = 1 + KB[8] * 7;
+    double batt = 1 - std::exp (-1 / (sr * .002)), bdec = std::exp (-hs / (sr * (.07 + KB[7] * .6))), bk = KB[6] * 3.9, bdrv = 1 + KB[8] * 7;
     Ld.F.set (150 * std::pow (2.0, std::min (7.6, KL[5] * 7 + Ld.env * 1.6 + CR[6] * D.se * 4)), .7 + KL[6] * KL[6] * 9, sr); double lgl = 1 - std::exp (-1 / (sr * (.003 + KL[7] * KL[7] * .4)));
     int de = E[2]; auto ex = [&] (double tau) { return std::exp (-hs / (sr * tau)); };
     double kdec = ex (.06 + KD[4] * .7), sdec = ex (.05 + KD[5] * .22), hdec = ex (.012 + KD[6] * .28), tdec = std::pow (.9994, hs), ldec = std::pow (.9996, hs), kf0 = 32 + KD[3] * 60, swing = KD[7] * .33,
@@ -314,10 +314,10 @@ struct Band {
       for (int r = 0; r < 5; ++r) { pa[r] += (2.3 + r * 1.37) * std::pow (2.0, KS[r][3] * 3 * (pb[r] < .5 ? 1 : -1)) / sr; if (pa[r] > 1) pa[r] -= 1; pb[r] += (.9 + r * .61) / sr; if (pb[r] > 1) pb[r] -= 1; }
       // 一 BASS
       cp += (cpT - cp) * .0004; double pm = CR[5] > .002 ? std::pow (2.0, CR[5] * cp * 7 / 12) : 1;
-      B.f += (B.tf - B.f) * .004; B.env *= bdec;
+      B.f += (B.tf - B.f) * .004; B.env *= bdec; { double ta = std::min (1.0, B.env * 4 + ((E[0] == 4 || E[0] == 3) ? .15 : 0)); B.amp += (ta - B.amp) * (ta > B.amp ? batt : 1.0); }   // 2 ms attack: no click on new bass notes
       double bx = B.v.run (E[0], B.f * pm, KB[3], KB[4], B.env) * EGB[E[0]]; B.ps += B.f * .5 / sr; if (B.ps >= 1) B.ps -= 1; bx += std::sin (TAU * B.ps) * .55;
       double bfc = 38 * std::pow (2.0, KB[5] * 7.5 + B.env * KB[7] * 4.5 + B.acc * B.env * 1.2 + CR[2] * lf * 12), bg = 1 - std::exp (-TAU * std::min (sr * .4, bfc) / sr);
-      double by = B.L.run (bx * .4 * bdrv, bg, bk); by = std::tanh (by * (1 + KB[8] * 1.5)) * std::min (1.0, B.env * 4 + ((E[0] == 4 || E[0] == 3) ? .15 : 0)) * KB[9] * KB[9] * 1.1;
+      double by = B.L.run (bx * .4 * bdrv, bg, bk); by = std::tanh (by * (1 + KB[8] * 1.5)) * B.amp * KB[9] * KB[9] * 1.1;
       // 二 LEAD
       Ld.f += (Ld.tf - Ld.f) * lgl; if (Ld.gate) { Ld.gl--; Ld.env += (1 - Ld.env) * .004; if (Ld.gl <= 0) Ld.gate = 0; } else Ld.env *= ldec;
       { double lu = Ld.v.run (E[1], Ld.f * pm * std::max (.05, 1 + CR[1] * 3 * by), KL[3], KL[4], Ld.env) * 1.2 * EGL[E[1]] * (1 + CR[6] * D.se * 3), lc = lu * .62; Ld.F.run (lc + (std::tanh (lu) - lc) * dtM); }
@@ -363,6 +363,7 @@ struct Band {
       else if (de == 8) { double rt = std::pow (2.0, (KD[3] - .5) * 1.6);
         dk2 = readSlot (3, d.pk, rt, std::min (1.0, d.ke * 2.5)); ds = readSlot (4, d.ps, rt, std::min (1.0, d.se * 2.5)); dh = readSlot (5, d.ph, rt, std::min (1.0, d.he * 2)); if (d.pt < 1e8) dt = readSlot (6, d.pt, rt, std::min (1.0, d.te * 2.5)); }
       if (de < 6 && d.te > .002) { d.tp += (70 * d.tf + KD[3] * 80) * (1 + .45 * d.tpe) / sr; wrap (d.tp); dt = std::sin (TAU * d.tp) * d.te * .5; }
+      if (d.kxn > 0) { double w = d.kxn / 64.0; dk2 = dk2 * (1 - w) + d.kxv * w; d.kxv *= .97; d.kxn--; } d.klast = dk2;   // short crossfade when a kick retriggers over its own tail
       if (de != 6 && de != 7) { dk2 *= d.kv; ds *= d.sv; dh *= d.hv * (de < 6 ? 1.8 : 1); dt *= d.tv * (de < 6 ? 1.6 : 1); }
       auto dg = [this] (int i) { return X.dmu[i] ? 0.0 : X.dm[i] * X.dm[i] * 1.23; };
       double dsum = dk2 * dg (0) + ds * dg (1) + dh * dg (2) + dt * dg (3); double dx = dsum * .95; if (dtM > .01) dx += (std::tanh (dsum * 1.4) - dx) * std::min (1.0, dtM * 1.5);
